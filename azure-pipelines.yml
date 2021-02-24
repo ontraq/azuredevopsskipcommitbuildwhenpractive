@@ -1,0 +1,56 @@
+trigger:
+  - master
+  - feature/*
+  - hotfix/*
+  - release/*
+  
+variables:
+  - name: DECODE_PERCENTS
+    value: true
+  - name: poolName
+    value: 'Hosted Agent Pool1'
+
+stages:
+  - stage: skipcommitbuild
+    displayName: skipcommitbuild
+    jobs:
+      - job: skipcommitbuild
+        displayName: skipcommitbuild
+        pool:
+          name: ${{ variables.poolName }}
+        steps:
+          - script: echo This happens before code
+            displayName: 'Pre-build:'
+          - script: |
+              echo_stderr ()
+              {
+                echo "$@" >&2
+              }
+
+              echo "Build.Reason: "
+              echo $(Build.Reason)
+              echo "'Build.SourceBranch: "
+              echo $(Build.SourceBranch)
+              echo "Build.SourceBranchName: "
+              echo $(Build.SourceBranchName)
+              length=$(skipcommitbuild --repoName testskipPRBuild --branchName $(Build.SourceBranch) --buildReason $(Build.Reason))
+              echo "length: "
+              echo $length
+              if [ $length = 1 ]; then
+                echo_stdrr "skip this build since there is a PR build"
+              else
+                echo "commit or pr build, continue build"
+              fi
+
+  - stage: build
+    displayName: build
+    dependsOn: skipcommitbuild
+    condition: succeeded()
+    jobs:
+      - job: build
+        displayName: build
+        pool:
+          name: ${{ variables.poolName }}
+        steps:
+          - script: echo This happens before code
+            displayName: 'CI Build'
